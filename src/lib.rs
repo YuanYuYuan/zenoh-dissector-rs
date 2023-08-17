@@ -1,18 +1,10 @@
-#![allow(dead_code)]
-#![allow(unused)]
-
-use zenoh_protocol::common::imsg;
-use zenoh_codec::{RCodec, WCodec, Zenoh080};
-use zenoh_buffers::{
-    reader::HasReader,
-    writer::{HasWriter, Writer},
-};
-use zenoh_buffers::ZSlice;
+use zenoh_codec::{RCodec, Zenoh080};
+use zenoh_buffers::reader::HasReader;
 use zenoh_protocol::transport::TransportMessage;
 use zenoh::value::Value;
 
-use wsdf::tap::{Field, Offset, Packet};
-use wsdf::{version, Dispatch, Protocol, ProtocolField};
+use wsdf::tap::{Offset, Packet};
+use wsdf::{Protocol, ProtocolField};
 
 wsdf::version!("0.0.1", 4, 0);
 
@@ -25,25 +17,10 @@ struct MyZenoh {
     frame: MyFrame,
 }
 
-#[derive(ProtocolField, Dispatch)]
-enum Body {
-    Frame(MyFrame),
-    Other,
-}
-
-impl Body {
-    fn dispatch_header(header: &u8) -> BodyDispatch {
-        match imsg::mid(*header) {
-            zenoh_protocol::transport::id::FRAME => BodyDispatch::Frame,
-            _ => BodyDispatch::Other,
-        }
-    }
-}
-
 #[derive(ProtocolField)]
 struct MyFrame(#[wsdf(
     consume_with = "decode_frame",
-    // enc = "ENC_LITTLE_ENDIAN"
+    // enc = "ENC_LITTLE_ENDIAN"    // This is unnecessary since the decoding is made by zenoh codec
 )] Vec<u8>);
 
 fn decode_frame(Packet(packet): Packet, Offset(offset): Offset) -> (usize, String) {
