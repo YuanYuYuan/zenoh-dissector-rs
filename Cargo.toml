@@ -1,17 +1,16 @@
 [package]
-name = "wsdf-test"
+name = "zenoh-dissector-rs"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# wsdf = "0.1.2"
-wsdf = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/wsdf"}
-zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/zenoh"}
-zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-protocol"}
-zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-codec"}
-zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-buffers"}
+wsdf = "0.1.2"
+zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-protocol" }
+zenoh-protocol = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-protocol" }
+zenoh-codec = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-protocol" }
+zenoh-buffers = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-protocol" }
 
 
 [lib]
