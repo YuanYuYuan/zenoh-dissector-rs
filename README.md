@@ -13,7 +13,7 @@ cargo build
 Place the plugin properly
 
 ```bash
-ln $(realpath ./target/debug/libzenoh_dissector_rs.so) ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector_rs.so
+ln -s $(realpath ./target/debug/libzenoh_dissector_rs.so) ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector_rs.so
 ```
 
 ## Sample Data
