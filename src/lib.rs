@@ -226,17 +226,32 @@ impl<'tvb> wsdf::Dissect<'tvb, ()> for MyMessage {
                 .get(prefix)
                 .expect(&format!("{:?}", &args.hf_indices));
 
+            // unsafe {
+            //     epan_sys::proto_tree_add_uint_format_value(
+            //         subtree,
+            //         hf_index,
+            //         args.tvb,
+            //         args.offset as _,
+            //         3,
+            //         45678,
+            //         nul_terminated_str("This is payload!"),
+            //     );
+            // }
+
+            let payload: Vec<_> = (0usize..1000).into_iter().map(|v| (v % 16) as u8).collect();
             unsafe {
-                epan_sys::proto_tree_add_uint_format_value(
+                epan_sys::proto_tree_add_bytes_with_length(
                     subtree,
                     hf_index,
                     args.tvb,
                     args.offset as _,
-                    3,
-                    45678,
-                    nul_terminated_str("This is payload!"),
+                    16,
+                    payload.as_ptr(),
+                    payload.len() as _,
                 );
             }
+
+
         }
 
         2
@@ -305,8 +320,9 @@ impl<'tvb> wsdf::Dissect<'tvb, ()> for MyMessage {
             args.proto_id,
             "my_zenoh.msg.body.frame.payload",
             "Payload",
-            epan_sys::field_display_e_BASE_DEC as _,
-            epan_sys::ftenum_FT_UINT8,
+            epan_sys::field_display_e_SEP_SPACE as _,
+            // epan_sys::field_display_e_SEP_SPACE as _,
+            epan_sys::ftenum_FT_BYTES,
         );
 
         // let args_next = wsdf::RegisterArgs {
