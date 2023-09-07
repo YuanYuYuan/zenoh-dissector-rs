@@ -13,6 +13,8 @@ zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/zenoh"}
 zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-protocol"}
 zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-codec"}
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-buffers"}
+derives = {path="./derives"}
+dissector = {path="./dissector"}
 
 
 [lib]

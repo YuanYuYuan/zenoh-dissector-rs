@@ -27,6 +27,12 @@ use zenoh_buffers::{
 use zenoh_protocol::common::imsg;
 use zenoh_protocol::transport::{FrameHeader, TransportMessage};
 use zenoh_protocol::{core::Reliability, transport::Frame};
+use dissector::MyProto;
+
+#[derive(MyProto)]
+struct ToBeDerived {
+
+}
 
 #[derive(Dissect, Proto)]
 #[wsdf(decode_from = [("tcp.port", 7447)])]
