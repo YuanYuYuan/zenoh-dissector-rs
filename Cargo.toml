@@ -1,5 +1,5 @@
 [package]
-name = "zenoh-dissector-rs"
+name = "zenoh-dissector"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,8 +14,11 @@ zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/
 zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-codec"}
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-buffers"}
 derives = {path="./derives"}
-dissector = {path="./dissector"}
 
 
-[lib]
+# [lib]
+# crate-type = ["cdylib"]
+
+[[example]]
+name = "simple_struct"
 crate-type = ["cdylib"]
