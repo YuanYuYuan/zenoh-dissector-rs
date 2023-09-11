@@ -25,3 +25,18 @@ fn derive_proto_impl(input: &syn::DeriveInput) -> Result<syn::ItemImpl> {
         }
     })
 }
+
+#[proc_macro_derive(Registrable)]
+pub fn parse_message(item: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(item as syn::DeriveInput);
+    match &input.data {
+        syn::Data::Struct(data) => {
+            for field in &data.fields {
+                dbg!(field);
+            }
+        },
+        _ => todo!()
+    }
+    // dbg!(&input.data);
+    TokenStream::from(quote!{fn dummy(){}})
+}

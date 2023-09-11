@@ -14,6 +14,7 @@ zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/
 zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-codec"}
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-buffers"}
 derives = {path="./derives"}
+anyhow = "1.0.75"
 
 
 # [lib]
@@ -21,4 +22,8 @@ derives = {path="./derives"}
 
 [[example]]
 name = "simple_struct"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "dev_dissect"
 crate-type = ["cdylib"]

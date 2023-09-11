@@ -2,10 +2,10 @@
 #![allow(unused_variables)]
 
 use std::{cell::RefCell, borrow::BorrowMut};
-
 use derives::MyProto;
-use zenoh_dissector::MyProtoTrait;
 use std::collections::HashMap;
+use zenoh_dissector::utils::nul_terminated_str;
+use anyhow::Result;
 
 #[no_mangle]
 #[used]
@@ -30,12 +30,12 @@ extern "C" fn plugin_register() {
     }
 }
 
-unsafe extern "C" fn register_protoinfo() {
+fn register_zenoh_protocol() -> Result<()> {
     let proto_id = unsafe {
         epan_sys::proto_register_protocol(
-            nul_terminated_str("NameIsZenoh"),
-            nul_terminated_str("ShortNameIsZenoh"),
-            nul_terminated_str("FilterNameIszenoh"),
+            nul_terminated_str("NameIsZenoh")?,
+            nul_terminated_str("ShortNameIsZenoh")?,
+            nul_terminated_str("FilterNameIszenoh")?,
         )
     };
 
@@ -104,6 +104,13 @@ unsafe extern "C" fn register_protoinfo() {
         debug_assert_ne!(ett, -1);
         data.borrow_mut().ett_map.insert("my_zenoh.msg.body".to_string(), ett);
     });
+    Ok(())
+}
+
+unsafe extern "C" fn register_protoinfo() {
+    if let Err(err) = register_zenoh_protocol() {
+        eprint!("{}", err);
+    }
 }
 
 unsafe extern "C" fn register_handoff() {
@@ -150,7 +157,7 @@ unsafe extern "C" fn dissect_main(
     epan_sys::col_set_str(
         (*pinfo).cinfo,
         epan_sys::COL_PROTOCOL as std::ffi::c_int,
-        nul_terminated_str("Zenoh"),
+        nul_terminated_str("Zenoh").unwrap(),
     );
     epan_sys::col_clear(
         (*pinfo).cinfo,
@@ -188,9 +195,9 @@ unsafe extern "C" fn dissect_main(
                 0 as _,
                 3,
                 if is_even {
-                    nul_terminated_str("Body (InitSyn)")
+                    nul_terminated_str("Body (InitSyn)").unwrap()
                 } else {
-                    nul_terminated_str("Body (Frame)")
+                    nul_terminated_str("Body (Frame)").unwrap()
                 },
             );
             let subtree = epan_sys::proto_item_add_subtree(
@@ -218,7 +225,7 @@ unsafe extern "C" fn dissect_main(
                     2 as _,
                     3,
                     45678,
-                    nul_terminated_str("This is version!"),
+                    nul_terminated_str("This is version!").unwrap(),
                 );
             }
 
@@ -234,7 +241,7 @@ unsafe extern "C" fn dissect_main(
                     (2 + 3) as _,
                     3,
                     45678,
-                    nul_terminated_str("This is WhatAmI"),
+                    nul_terminated_str("This is WhatAmI").unwrap(),
                 );
             }
         } else {
@@ -275,9 +282,6 @@ thread_local! {
     static PROTOCOL_DATA: RefCell<ProtocolData> = ProtocolData::default().into();
 }
 
-fn nul_terminated_str(s: &str) -> *const std::ffi::c_char {
-    Box::leak(std::ffi::CString::new(s).unwrap().into_boxed_c_str()).as_ptr()
-}
 
 pub fn register_hf_index(
     name: &str,
@@ -287,13 +291,12 @@ pub fn register_hf_index(
     type_: std::ffi::c_uint,
 ) -> std::ffi::c_int {
     let hf_index_ptr = Box::leak(Box::new(-1)) as *mut _;
-    let abbrev = nul_terminated_str(prefix);
-        // Box::leak(std::ffi::CString::new(prefix).unwrap().into_boxed_c_str()).as_ptr() as *const std::ffi::c_char;
+    let abbrev = nul_terminated_str(prefix).unwrap();
 
     let hf_register_info = epan_sys::hf_register_info {
         p_id: hf_index_ptr,
         hfinfo: epan_sys::header_field_info {
-            name: nul_terminated_str(name),
+            name: nul_terminated_str(name).unwrap(),
             abbrev,
             type_,
             display,
@@ -315,7 +318,3 @@ pub fn register_hf_index(
     debug_assert_ne!(unsafe { *hf_index_ptr }, -1);
     unsafe { *hf_index_ptr }
 }
-
-
-#[derive(MyProto)]
-struct ThisShouldFail {}
