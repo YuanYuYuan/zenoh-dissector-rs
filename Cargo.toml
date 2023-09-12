@@ -9,10 +9,10 @@ edition = "2021"
 # wsdf = "0.1.2"
 wsdf = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/wsdf"}
 epan-sys = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/epan-sys"}
-zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/zenoh"}
-zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-protocol"}
-zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-codec"}
-zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh-new-protocol/commons/zenoh-buffers"}
+zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh/zenoh"}
+zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-protocol", features = ["test"]}
+zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-codec"}
+zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-buffers"}
 derives = {path="./derives"}
 anyhow = "1.0.75"
 
@@ -26,4 +26,8 @@ crate-type = ["cdylib"]
 
 [[example]]
 name = "dev_dissect"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "dev_zenoh"
 crate-type = ["cdylib"]

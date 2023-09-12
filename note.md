@@ -553,3 +553,11 @@ fn add_to_tree_format_value_int(
 }
 
 ```
+
+## Plan for zenoh-dissector-rs
+
+- Regularize all the outputs to string (prefer `as_str` or `to_string`), so that we can easily implement all the functions.
+- For bytes data, either simply printing them via `Debug` or implementing a proper way to show.
+- For `Option` types, skipping them or printing them as `None`
+- Properly setup the subtree branch
+- Intrusive way: using procedural macros
