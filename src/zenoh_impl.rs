@@ -4,6 +4,7 @@ use crate::utils::nul_terminated_str;
 use anyhow::{bail, Result};
 use zenoh_protocol::core::{wire_expr::WireExpr, Encoding, ZenohId};
 use zenoh_protocol::network::{push::Push, NetworkBody, NetworkMessage};
+use zenoh_protocol::transport::fragment::Fragment;
 use zenoh_protocol::transport::{frame::Frame, init::InitSyn, TransportBody, TransportMessage};
 use zenoh_protocol::zenoh::{del::Del, put::Put, PushBody};
 
@@ -156,6 +157,136 @@ mod impl_for_init_syn {
     }
 }
 
+mod impl_for_init_fragment {
+    use crate::zenoh_impl::*;
+
+    impl IntoHFMap for Fragment {
+        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
+            let mut hf_map = HeaderFieldMap::new();
+
+            hf_map.insert(
+                format!("{prefix}.reliability"),
+                HeaderField {
+                    name: "Reliability".into(),
+                    kind: FieldKind::Text,
+                },
+            );
+
+            hf_map.insert(
+                format!("{prefix}.more"),
+                HeaderField {
+                    name: "More".into(),
+                    kind: FieldKind::Text,
+                },
+            );
+
+            hf_map.insert(
+                format!("{prefix}.sn"),
+                HeaderField {
+                    name: "TransportSn".into(),
+                    kind: FieldKind::Text,
+                },
+            );
+
+            hf_map.insert(
+                format!("{prefix}.payload"),
+                HeaderField {
+                    name: "Payload".into(),
+                    kind: FieldKind::Text,
+                },
+            );
+
+            hf_map.insert(
+                format!("{prefix}.ext_qos"),
+                HeaderField {
+                    name: "ExtQoS".into(),
+                    kind: FieldKind::Text,
+                },
+            );
+
+            hf_map
+        }
+    }
+
+    impl Sample for Fragment {
+        fn sample() -> Self {
+            Fragment::rand()
+        }
+    }
+
+    impl GenerateHFMap for Fragment {
+        fn span() -> Span<Self> {
+            Span::Struct(Self::sample())
+        }
+    }
+
+    impl AddToTree for Fragment {
+        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
+            let hf_index = args.get_hf(&format!("{prefix}.reliability"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    2 as _,
+                    3,
+                    nul_terminated_str(&format!("{:?}", self.reliability))?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.more"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    2 as _,
+                    3,
+                    nul_terminated_str(&format!("{:?}", self.more))?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.sn"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    2 as _,
+                    3,
+                    nul_terminated_str(&format!("{:?}", self.sn))?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.payload"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    2 as _,
+                    3,
+                    nul_terminated_str(&format!("{:?}", self.payload))?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.ext_qos"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    2 as _,
+                    3,
+                    nul_terminated_str(&format!("{:?}", self.ext_qos))?,
+                );
+            }
+
+            Ok(())
+        }
+    }
+}
+
 mod imp_for_transport_body {
     use crate::zenoh_impl::*;
 
@@ -170,6 +301,7 @@ mod imp_for_transport_body {
             match self {
                 Self::InitSyn(body) => body.into_hf_map(&format!("{prefix}.init_syn")),
                 Self::Frame(body) => body.into_hf_map(&format!("{prefix}.frame")),
+                Self::Fragment(body) => body.into_hf_map(&format!("{prefix}.fragment")),
                 _ => {
                     todo!()
                 }
@@ -182,6 +314,7 @@ mod imp_for_transport_body {
             Span::Enum(vec![
                 Self::InitSyn(InitSyn::rand()),
                 Self::Frame(Frame::rand()),
+                Self::Fragment(Fragment::rand()),
             ])
         }
     }
@@ -194,6 +327,9 @@ mod imp_for_transport_body {
                 }
                 Self::Frame(body) => {
                     body.add_to_tree(&format!("{prefix}.frame"), args)?;
+                }
+                Self::Fragment(body) => {
+                    body.add_to_tree(&format!("{prefix}.fragment"), args)?;
                 }
                 _ => {
                     bail!("Not implemented yet.");
@@ -290,7 +426,6 @@ mod impl_for_put {
 
     impl AddToTree for Put {
         fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-
             if let Some(timestamp) = self.timestamp {
                 let hf_index = args.get_hf(&format!("{prefix}.timestamp"))?;
                 unsafe {
@@ -371,7 +506,6 @@ mod impl_for_del {
 
     impl AddToTree for Del {
         fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-
             if let Some(timestamp) = self.timestamp {
                 let hf_index = args.get_hf(&format!("{prefix}.timestamp"))?;
                 unsafe {

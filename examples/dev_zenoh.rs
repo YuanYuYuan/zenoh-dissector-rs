@@ -14,6 +14,8 @@ use zenoh_dissector::{
 use zenoh_protocol::transport::TransportMessage;
 use zenoh_codec::{RCodec, Zenoh080};
 use zenoh_buffers::reader::HasReader;
+use zenoh_buffers::ZSlice;
+use zenoh_buffers::reader::Reader;
 use anyhow::Result;
 
 #[no_mangle]
@@ -143,25 +145,48 @@ unsafe extern "C" fn dissect_main(
         );
     }
 
-    let mut reader = tvb_buf[2..].reader();
+    // let mut reader = tvb_buf[2..].reader();
+    // let codec = Zenoh080::new();
+    //
+    // let msg: TransportMessage = codec
+    //     .read(&mut reader)
+    //     .expect("Failed to read!!!!!!!!!");
+    // // dbg!(&msg);
+
+    let mut zslice = ZSlice::from(tvb_buf);
     let codec = Zenoh080::new();
-    let msg: TransportMessage = codec
-        .read(&mut reader)
-        .expect("Failed to read!!!!!!!!!");
-    // dbg!(&msg);
-
-    // dbg!(&tvb_buf);
-
-    PROTOCOL_DATA.with(|data| {
-        let tree_args = TreeArgs {
-            tree,
-            tvb,
-            hf_map: &data.borrow().hf_map
-        };
-        if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
-            dbg!(err);
+    let mut reader = zslice.reader();
+    while reader.can_read() {
+        match <Zenoh080 as RCodec<TransportMessage, _>>::read(codec, &mut reader) {
+            Ok(msg) => {
+                dbg!(&msg);
+                PROTOCOL_DATA.with(|data| {
+                    let tree_args = TreeArgs {
+                        tree,
+                        tvb,
+                        hf_map: &data.borrow().hf_map
+                    };
+                    if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
+                        dbg!(err);
+                    }
+                });
+            },
+            Err(err) => {
+                dbg!(err);
+            }
         }
-    });
+    }
+
+    // PROTOCOL_DATA.with(|data| {
+    //     let tree_args = TreeArgs {
+    //         tree,
+    //         tvb,
+    //         hf_map: &data.borrow().hf_map
+    //     };
+    //     if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
+    //         dbg!(err);
+    //     }
+    // });
 
     32
 }
