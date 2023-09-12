@@ -12,6 +12,34 @@ trait Sample {
     fn sample() -> Self;
 }
 
+#[derive(Default)]
+pub struct ZenohProtocol {}
+
+mod impl_for_zenoh_protocol {
+    use crate::zenoh_impl::*;
+
+    impl IntoHFMap for ZenohProtocol {
+        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
+            let mut hf_map = HeaderFieldMap::new();
+            hf_map.insert(
+                prefix.to_string(),
+                HeaderField {
+                    name: "ZenohProtocol".into(),
+                    kind: FieldKind::Branch,
+                },
+            );
+            hf_map.extend(TransportMessage::generate_hf_map(prefix));
+            hf_map
+        }
+    }
+
+    impl GenerateHFMap for ZenohProtocol {
+        fn span() -> Span<Self> {
+            Span::Struct(ZenohProtocol::default())
+        }
+    }
+}
+
 mod impl_for_init_syn {
     use crate::zenoh_impl::*;
 
@@ -98,8 +126,8 @@ mod impl_for_init_syn {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     self.version.into(),
                 );
             }
@@ -110,8 +138,8 @@ mod impl_for_init_syn {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(self.whatami.to_str())?,
                 );
             }
@@ -122,8 +150,8 @@ mod impl_for_init_syn {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&self.zid.to_string())?,
                 );
             }
@@ -134,8 +162,8 @@ mod impl_for_init_syn {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     self.resolution.as_u8().into(),
                 );
             }
@@ -146,8 +174,8 @@ mod impl_for_init_syn {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     self.batch_size.into(),
                 );
             }
@@ -228,8 +256,8 @@ mod impl_for_init_fragment {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.reliability))?,
                 );
             }
@@ -240,8 +268,8 @@ mod impl_for_init_fragment {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.more))?,
                 );
             }
@@ -252,8 +280,8 @@ mod impl_for_init_fragment {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.sn))?,
                 );
             }
@@ -264,8 +292,8 @@ mod impl_for_init_fragment {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.payload))?,
                 );
             }
@@ -276,8 +304,8 @@ mod impl_for_init_fragment {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.ext_qos))?,
                 );
             }
@@ -298,14 +326,25 @@ mod imp_for_transport_body {
 
     impl IntoHFMap for TransportBody {
         fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            match self {
+            let mut hf_map = HeaderFieldMap::new();
+            hf_map.insert(
+                format!("{prefix}"),
+                HeaderField {
+                    name: "TransportBody".into(),
+                    kind: FieldKind::Branch,
+                },
+            );
+
+            let branches = match self {
                 Self::InitSyn(body) => body.into_hf_map(&format!("{prefix}.init_syn")),
                 Self::Frame(body) => body.into_hf_map(&format!("{prefix}.frame")),
                 Self::Fragment(body) => body.into_hf_map(&format!("{prefix}.fragment")),
                 _ => {
                     todo!()
                 }
-            }
+            };
+            hf_map.extend(branches);
+            hf_map
         }
     }
 
@@ -323,13 +362,22 @@ mod imp_for_transport_body {
         fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
             match self {
                 Self::InitSyn(body) => {
-                    body.add_to_tree(&format!("{prefix}.init_syn"), args)?;
+                    body.add_to_tree(
+                        &format!("{prefix}.init_syn"),
+                        &args.make_subtree(prefix, &format!("TransportBody (InitSyn)"))?
+                    )?;
                 }
                 Self::Frame(body) => {
-                    body.add_to_tree(&format!("{prefix}.frame"), args)?;
+                    body.add_to_tree(
+                        &format!("{prefix}.frame"),
+                        &args.make_subtree(prefix, &format!("TransportBody (Frame)"))?
+                    )?;
                 }
                 Self::Fragment(body) => {
-                    body.add_to_tree(&format!("{prefix}.fragment"), args)?;
+                    body.add_to_tree(
+                        &format!("{prefix}.fragment"),
+                        &args.make_subtree(prefix, &format!("TransportBody (Fragment)"))?
+                    )?;
                 }
                 _ => {
                     bail!("Not implemented yet.");
@@ -433,8 +481,8 @@ mod impl_for_put {
                         args.tree,
                         hf_index,
                         args.tvb,
-                        2 as _,
-                        3,
+                    args.start as _,
+                    args.length as _,
                         nul_terminated_str(&format!("{:?}", self.timestamp))?,
                     );
                 }
@@ -446,8 +494,8 @@ mod impl_for_put {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&self.encoding.to_string())?,
                 );
             }
@@ -458,8 +506,8 @@ mod impl_for_put {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.payload))?,
                 );
             }
@@ -513,8 +561,8 @@ mod impl_for_del {
                         args.tree,
                         hf_index,
                         args.tvb,
-                        2 as _,
-                        3,
+                        args.start as _,
+                        args.length as _,
                         nul_terminated_str(&format!("{:?}", self.timestamp))?,
                     );
                 }
@@ -536,10 +584,22 @@ mod impl_for_push_body {
 
     impl IntoHFMap for PushBody {
         fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            match self {
-                Self::Put(body) => body.into_hf_map(&format!("{prefix}.put")),
-                Self::Del(body) => body.into_hf_map(&format!("{prefix}.del")),
-            }
+            let mut hf_map = HeaderFieldMap::new();
+            hf_map.insert(
+                format!("{prefix}"),
+                HeaderField {
+                    name: "PushBody".into(),
+                    kind: FieldKind::Branch,
+                },
+            );
+            let branches = {
+                match self {
+                    Self::Put(body) => body.into_hf_map(&format!("{prefix}.put")),
+                    Self::Del(body) => body.into_hf_map(&format!("{prefix}.del")),
+                }
+            };
+            hf_map.extend(branches);
+            hf_map
         }
     }
 
@@ -552,8 +612,14 @@ mod impl_for_push_body {
     impl AddToTree for PushBody {
         fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
             match self {
-                PushBody::Put(body) => body.add_to_tree(&format!("{prefix}.put"), args),
-                PushBody::Del(body) => body.add_to_tree(&format!("{prefix}.del"), args),
+                PushBody::Put(body) => body.add_to_tree(
+                    &format!("{prefix}.put"),
+                    &args.make_subtree(prefix, &format!("PushBody (Put)"))?
+                ),
+                PushBody::Del(body) => body.add_to_tree(
+                    &format!("{prefix}.del"),
+                    &args.make_subtree(prefix, &format!("PushBody (Del)"))?
+                ),
             }
         }
     }
@@ -629,8 +695,8 @@ mod impl_for_push {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(self.wire_expr.as_str())?,
                 );
             }
@@ -641,8 +707,8 @@ mod impl_for_push {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.ext_qos))?,
                 );
             }
@@ -654,8 +720,8 @@ mod impl_for_push {
                         args.tree,
                         hf_index,
                         args.tvb,
-                        2 as _,
-                        3,
+                        args.start as _,
+                        args.length as _,
                         nul_terminated_str(&format!("{:?}", ext_tstamp))?,
                     );
                 }
@@ -667,8 +733,8 @@ mod impl_for_push {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.ext_nodeid))?,
                 );
             }
@@ -692,12 +758,24 @@ mod impl_for_network_body {
 
     impl IntoHFMap for NetworkBody {
         fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            match self {
-                Self::Push(body) => body.into_hf_map(&format!("{prefix}.push")),
-                _ => {
-                    todo!()
+            let mut hf_map = HeaderFieldMap::new();
+            hf_map.insert(
+                format!("{prefix}"),
+                HeaderField {
+                    name: "NetworkBody".into(),
+                    kind: FieldKind::Branch,
+                },
+            );
+            let branches = {
+                match self {
+                    Self::Push(body) => body.into_hf_map(&format!("{prefix}.push")),
+                    _ => {
+                        todo!()
+                    }
                 }
-            }
+            };
+            hf_map.extend(branches);
+            hf_map
         }
     }
 
@@ -710,7 +788,10 @@ mod impl_for_network_body {
     impl AddToTree for NetworkBody {
         fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
             match self {
-                NetworkBody::Push(body) => body.add_to_tree(&format!("{prefix}.push"), args),
+                NetworkBody::Push(body) => body.add_to_tree(
+                    &format!("{prefix}.push"),
+                    &args.make_subtree(prefix, &format!("NetworkBody (Push)"))?,
+                ),
                 _ => bail!("Not implemented yet"),
             }
         }
@@ -758,6 +839,13 @@ mod impl_for_frame {
             );
 
             // payload
+            hf_map.insert(
+                format!("{prefix}.payload"),
+                HeaderField {
+                    name: "Payload".into(),
+                    kind: FieldKind::Branch,
+                },
+            );
             hf_map.extend(NetworkMessage::generate_hf_map(&format!(
                 "{prefix}.payload"
             )));
@@ -780,8 +868,8 @@ mod impl_for_frame {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.reliability))?,
                 );
             }
@@ -792,15 +880,16 @@ mod impl_for_frame {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     self.sn.into(),
                 );
             }
 
             // payload
+            let payload_args = args.make_subtree(&format!("{prefix}.payload"), &format!("Payload"))?;
             for msg in &self.payload {
-                msg.add_to_tree(&format!("{prefix}.payload"), args)?;
+                msg.add_to_tree(&format!("{prefix}.payload"), &payload_args)?;
             }
 
             // ext_qos
@@ -810,8 +899,8 @@ mod impl_for_frame {
                     args.tree,
                     hf_index,
                     args.tvb,
-                    2 as _,
-                    3,
+                    args.start as _,
+                    args.length as _,
                     nul_terminated_str(&format!("{:?}", self.ext_qos))?,
                 );
             }

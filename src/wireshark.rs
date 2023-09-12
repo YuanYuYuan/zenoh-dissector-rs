@@ -20,6 +20,10 @@ impl FieldKind {
                 epan_sys::field_display_e_SEP_SPACE,
                 epan_sys::ftenum_FT_BYTES,
             ),
+            Self::Branch => (
+                epan_sys::field_display_e_BASE_NONE,
+                epan_sys::ftenum_FT_NONE,
+            ),
         }
     }
 }

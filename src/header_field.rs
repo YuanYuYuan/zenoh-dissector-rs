@@ -14,6 +14,7 @@ pub enum FieldKind {
     Number,
     Text,
     Bytes,
+    Branch,
 }
 
 pub trait IntoHFMap {

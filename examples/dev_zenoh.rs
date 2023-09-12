@@ -10,13 +10,15 @@ use zenoh_dissector::{
     header_field::GenerateHFMap,
     wireshark::register_header_field,
     tree::{TreeArgs, AddToTree},
+    zenoh_impl::ZenohProtocol,
 };
-use zenoh_protocol::transport::TransportMessage;
+use zenoh_protocol::transport::{BatchSize, TransportMessage};
 use zenoh_codec::{RCodec, Zenoh080};
 use zenoh_buffers::reader::HasReader;
 use zenoh_buffers::ZSlice;
 use zenoh_buffers::reader::Reader;
 use anyhow::Result;
+use zenoh_buffers::ZSliceBuffer;
 
 #[no_mangle]
 #[used]
@@ -27,6 +29,11 @@ static plugin_want_major: std::ffi::c_int = 4;
 #[no_mangle]
 #[used]
 static plugin_want_minor: std::ffi::c_int = 0;
+
+
+#[no_mangle]
+#[used]
+static MTU: usize = 65536;
 
 #[derive(Default, Debug)]
 struct ProtocolData {
@@ -61,7 +68,7 @@ fn register_zenoh_protocol() -> Result<()> {
         )
     };
 
-    let hf_map = TransportMessage::generate_hf_map("zenoh");
+    let hf_map = ZenohProtocol::generate_hf_map("zenoh");
 
     PROTOCOL_DATA.with(|data| {
         data.borrow_mut().id = proto_id;
@@ -153,29 +160,77 @@ unsafe extern "C" fn dissect_main(
     //     .expect("Failed to read!!!!!!!!!");
     // // dbg!(&msg);
 
-    let mut zslice = ZSlice::from(tvb_buf);
+
+    // let mut zslice = ZSlice::from(tvb_buf);
     let codec = Zenoh080::new();
-    let mut reader = zslice.reader();
-    while reader.can_read() {
-        match <Zenoh080 as RCodec<TransportMessage, _>>::read(codec, &mut reader) {
-            Ok(msg) => {
-                dbg!(&msg);
-                PROTOCOL_DATA.with(|data| {
-                    let tree_args = TreeArgs {
-                        tree,
-                        tvb,
-                        hf_map: &data.borrow().hf_map
-                    };
+    // let mut reader = zslice.reader();
+    let mut counter = 0;
+    // dbg!("============Dissector main=============");
+
+    let mut reader = tvb_buf.reader();
+    // dbg!(reader.len());
+    // dbg!(&tvb_buf[0..2]);
+
+    let root_key = "zenoh";
+    PROTOCOL_DATA.with(|data| {
+
+        let tree_args = TreeArgs {
+            tree,
+            tvb,
+            hf_map: &data.borrow().hf_map,
+            start: 0,
+            length: 0,
+        };
+
+        let mut tree_args = tree_args.make_subtree(root_key, "Zenoh Protocol")?;
+
+        while reader.len() >= 2 {
+
+            // Length of sliced message
+            let mut length = [0_u8, 0u8];
+            reader.read_exact(&mut length).unwrap();
+            let n = BatchSize::from_le_bytes(length) as usize;
+            // let n = length[1] as usize * 16 + length[0] as usize;
+            // let n = u16::from_le_bytes([length[0], length[1]]) as usize;
+
+            if n > reader.len() {
+                (*pinfo).desegment_offset = 0;
+                (*pinfo).desegment_len = epan_sys::DESEGMENT_ONE_MORE_SEGMENT;
+                println!("Skip since n={} >= reader.len()={}", n, reader.len());
+                break;
+            }
+
+            assert!(0 < n && n <= MTU, "{}", n);
+
+            // Read sliced message into a buffer
+            let mut buf = vec![0_u8; MTU];
+            reader.read_exact(&mut buf[0..n]).unwrap();
+
+
+            // Update the range of the buffer to display
+            tree_args.length = 2 + n;
+
+            // println!("[#{counter}] n={}, remaining: {}", n, reader.remaining());
+
+            // Read and decode the bytes to TransportMessage
+            match <Zenoh080 as RCodec<TransportMessage, _>>::read(codec, &mut buf.reader()) {
+                Ok(msg) => {
+                    // dbg!((counter, reader.remaining(), &msg));
                     if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
                         dbg!(err);
                     }
-                });
-            },
-            Err(err) => {
-                dbg!(err);
+                },
+                Err(err) => {
+                    dbg!("Decode error!");
+                }
             }
+
+            // Update the range of the buffer to display
+            tree_args.start += tree_args.length;
+            counter += 1;
         }
-    }
+        anyhow::Ok(())
+    }).unwrap();
 
     // PROTOCOL_DATA.with(|data| {
     //     let tree_args = TreeArgs {
