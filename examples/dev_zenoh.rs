@@ -74,13 +74,13 @@ fn register_zenoh_protocol() -> Result<()> {
         data.borrow_mut().id = proto_id;
 
         // Header Field
-        for (key, hf) in &hf_map {
+        for (key, hf) in hf_map {
             data.borrow_mut().hf_map.insert(
                 key.to_string(),
                 register_header_field(
                     proto_id,
                     &hf.name,
-                    key,
+                    &key,
                     hf.kind,
                 )?
             );

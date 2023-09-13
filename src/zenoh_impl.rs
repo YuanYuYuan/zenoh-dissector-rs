@@ -7,13 +7,15 @@ use zenoh_protocol::network::{push::Push, NetworkBody, NetworkMessage};
 use zenoh_protocol::transport::fragment::Fragment;
 use zenoh_protocol::transport::{frame::Frame, init::InitSyn, TransportBody, TransportMessage};
 use zenoh_protocol::zenoh::{del::Del, put::Put, PushBody};
+use zenoh_protocol::transport::init::InitAck;
+use crate::macros::{impl_for_struct, impl_for_enum};
 
 trait Sample {
     fn sample() -> Self;
 }
 
 #[derive(Default)]
-pub struct ZenohProtocol {}
+pub struct ZenohProtocol;
 
 mod impl_for_zenoh_protocol {
     use crate::zenoh_impl::*;
@@ -36,6 +38,91 @@ mod impl_for_zenoh_protocol {
     impl GenerateHFMap for ZenohProtocol {
         fn span() -> Span<Self> {
             Span::Struct(ZenohProtocol::default())
+        }
+    }
+}
+
+mod impl_for_init_ack {
+    use crate::zenoh_impl::*;
+
+    impl_for_struct! {
+        struct InitAck {
+            version: u8,
+            whatami: WhatAmI,
+            zid: ZenohId,
+            resolution: Resolution,
+            batch_size: BatchSize,
+            cookie: ZSlice,
+            ext_qos: Option<QoS>,
+            ext_shm: Option<Shm>,
+            ext_auth: Option<Auth>,
+            ext_mlink: Option<MultiLink>,
+        }
+    }
+
+    impl AddToTree for InitAck {
+        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
+            let hf_index = args.get_hf(&format!("{prefix}.version"))?;
+            unsafe {
+                epan_sys::proto_tree_add_uint(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    args.start as _,
+                    args.length as _,
+                    self.version.into(),
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.whatami"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    args.start as _,
+                    args.length as _,
+                    nul_terminated_str(self.whatami.to_str())?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.zid"))?;
+            unsafe {
+                epan_sys::proto_tree_add_string(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    args.start as _,
+                    args.length as _,
+                    nul_terminated_str(&self.zid.to_string())?,
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.resolution"))?;
+            unsafe {
+                epan_sys::proto_tree_add_uint(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    args.start as _,
+                    args.length as _,
+                    self.resolution.as_u8().into(),
+                );
+            }
+
+            let hf_index = args.get_hf(&format!("{prefix}.batch_size"))?;
+            unsafe {
+                epan_sys::proto_tree_add_uint(
+                    args.tree,
+                    hf_index,
+                    args.tvb,
+                    args.start as _,
+                    args.length as _,
+                    self.batch_size.into(),
+                );
+            }
+
+            Ok(())
         }
     }
 }
