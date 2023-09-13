@@ -13,7 +13,6 @@ zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh/zenoh"}
 zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-protocol", features = ["test"]}
 zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-codec"}
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-buffers"}
-derives = {path="./derives"}
 anyhow = "1.0.75"
 convert_case = "0.6.0"
 
