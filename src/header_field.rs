@@ -36,13 +36,18 @@ impl HeaderFieldMap {
         HeaderFieldMap(HashMap::<String, HeaderField>::new())
     }
 
-    pub fn add(mut self, prefix: &str, field_name: &str, display_name: &str) -> Self {
+    pub fn add(mut self, prefix: &str, name: &str, display_name: &str, kind: FieldKind) -> Self {
+        let key = if name == "" {
+            format!("{prefix}")
+        } else {
+            format!("{prefix}.{name}")
+        };
         self.0
             .insert(
-                format!("{prefix}.{field_name}"),
+                key,
                 HeaderField {
                     name: display_name.into(),
-                    kind: FieldKind::Text,
+                    kind,
                 },
             );
         self
@@ -57,31 +62,6 @@ pub enum FieldKind {
     Branch,
 }
 
-pub trait IntoHFMap {
-    fn into_hf_map(self, prefix: &str) -> HeaderFieldMap;
-}
-
-pub enum Span<T> {
-    Enum(Vec<T>),
-    Struct(T)
-}
-
-pub trait GenerateHFMap: Sized + IntoHFMap {
-
-    fn span() -> Span<Self>;
-
-    fn generate_hf_map(prefix: &str) -> HeaderFieldMap {
-        match Self::span() {
-            Span::Enum(branches) => {
-                let mut hf_map = HeaderFieldMap::new();
-                for item in branches {
-                    hf_map.extend(item.into_hf_map(prefix.clone()));
-                }
-                hf_map
-            }
-            Span::Struct(st) => {
-                st.into_hf_map(prefix)
-            }
-        }
-    }
+pub trait GenerateHFMap {
+    fn generate_hf_map(prefix: &str) -> HeaderFieldMap;
 }

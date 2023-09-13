@@ -15,6 +15,7 @@ zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-co
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-buffers"}
 derives = {path="./derives"}
 anyhow = "1.0.75"
+convert_case = "0.6.0"
 
 
 # [lib]

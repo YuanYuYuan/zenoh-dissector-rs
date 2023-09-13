@@ -1,12 +1,7 @@
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
-use std::{cell::RefCell, borrow::BorrowMut};
-use derives::MyProto;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use zenoh_dissector::{
     utils::nul_terminated_str,
-    // test_msg::Message,
     header_field::GenerateHFMap,
     wireshark::register_header_field,
     tree::{TreeArgs, AddToTree},
@@ -15,10 +10,8 @@ use zenoh_dissector::{
 use zenoh_protocol::transport::{BatchSize, TransportMessage};
 use zenoh_codec::{RCodec, Zenoh080};
 use zenoh_buffers::reader::HasReader;
-use zenoh_buffers::ZSlice;
 use zenoh_buffers::reader::Reader;
 use anyhow::Result;
-use zenoh_buffers::ZSliceBuffer;
 
 #[no_mangle]
 #[used]
@@ -39,7 +32,7 @@ static MTU: usize = 65536;
 struct ProtocolData {
     id: i32,
     hf_map: HashMap<String, std::ffi::c_int>,
-    ett_map: HashMap<String, std::ffi::c_int>,
+    // ett_map: HashMap<String, std::ffi::c_int>,
 }
 
 thread_local! {
@@ -120,14 +113,12 @@ unsafe extern "C" fn register_handoff() {
     });
 }
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-static CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 unsafe extern "C" fn dissect_main(
     tvb: *mut epan_sys::tvbuff,
     pinfo: *mut epan_sys::_packet_info,
     tree: *mut epan_sys::_proto_node,
-    data: *mut std::ffi::c_void,
+    _data: *mut std::ffi::c_void,
 ) -> std::ffi::c_int {
 
     epan_sys::col_set_str(
@@ -152,24 +143,9 @@ unsafe extern "C" fn dissect_main(
         );
     }
 
-    // let mut reader = tvb_buf[2..].reader();
-    // let codec = Zenoh080::new();
-    //
-    // let msg: TransportMessage = codec
-    //     .read(&mut reader)
-    //     .expect("Failed to read!!!!!!!!!");
-    // // dbg!(&msg);
-
-
-    // let mut zslice = ZSlice::from(tvb_buf);
     let codec = Zenoh080::new();
-    // let mut reader = zslice.reader();
     let mut counter = 0;
-    // dbg!("============Dissector main=============");
-
     let mut reader = tvb_buf.reader();
-    // dbg!(reader.len());
-    // dbg!(&tvb_buf[0..2]);
 
     let root_key = "zenoh";
     PROTOCOL_DATA.with(|data| {
@@ -221,7 +197,7 @@ unsafe extern "C" fn dissect_main(
                     }
                 },
                 Err(err) => {
-                    dbg!("Decode error!");
+                    dbg!("Decode error!", err);
                 }
             }
 
@@ -232,16 +208,5 @@ unsafe extern "C" fn dissect_main(
         anyhow::Ok(())
     }).unwrap();
 
-    // PROTOCOL_DATA.with(|data| {
-    //     let tree_args = TreeArgs {
-    //         tree,
-    //         tvb,
-    //         hf_map: &data.borrow().hf_map
-    //     };
-    //     if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
-    //         dbg!(err);
-    //     }
-    // });
-
-    32
+    tvb_len as _
 }

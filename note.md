@@ -561,3 +561,4 @@ fn add_to_tree_format_value_int(
 - For `Option` types, skipping them or printing them as `None`
 - Properly setup the subtree branch
 - Intrusive way: using procedural macros
+- make reason in `zenoh_protocol::transport::close::Close` transparent and implement the Display for it

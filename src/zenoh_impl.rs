@@ -1,50 +1,43 @@
 use crate::header_field::*;
+use crate::macros::{impl_for_enum, impl_for_struct};
 use crate::tree::*;
 use crate::utils::nul_terminated_str;
-use anyhow::{bail, Result};
-use zenoh_protocol::core::{wire_expr::WireExpr, Encoding, ZenohId};
-use zenoh_protocol::network::{push::Push, NetworkBody, NetworkMessage};
-use zenoh_protocol::transport::fragment::Fragment;
-use zenoh_protocol::transport::{frame::Frame, init::InitSyn, TransportBody, TransportMessage};
-use zenoh_protocol::zenoh::{del::Del, put::Put, PushBody};
-use zenoh_protocol::transport::init::InitAck;
-use crate::macros::{impl_for_struct, impl_for_enum};
+use anyhow::Result;
+use convert_case::{Case, Casing};
 
-trait Sample {
-    fn sample() -> Self;
-}
 
-#[derive(Default)]
+
 pub struct ZenohProtocol;
 
 mod impl_for_zenoh_protocol {
-    use crate::zenoh_impl::*;
+    use super::ZenohProtocol;
+    use crate::header_field::{
+        FieldKind, GenerateHFMap, HeaderFieldMap,
+    };
+    use zenoh_protocol::transport::TransportMessage;
 
-    impl IntoHFMap for ZenohProtocol {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-            hf_map.insert(
-                prefix.to_string(),
-                HeaderField {
-                    name: "ZenohProtocol".into(),
-                    kind: FieldKind::Branch,
-                },
-            );
+    impl GenerateHFMap for ZenohProtocol {
+        fn generate_hf_map(prefix: &str) -> HeaderFieldMap {
+            let mut hf_map = HeaderFieldMap::new()
+                .add(prefix, "", "ZenohProtocol", FieldKind::Branch);
             hf_map.extend(TransportMessage::generate_hf_map(prefix));
             hf_map
         }
     }
-
-    impl GenerateHFMap for ZenohProtocol {
-        fn span() -> Span<Self> {
-            Span::Struct(ZenohProtocol::default())
-        }
-    }
 }
 
-mod impl_for_init_ack {
+mod impl_for_transport {
+    use zenoh_protocol::{
+        network::NetworkMessage,
+        transport::{
+            Close, Fragment, Frame, InitAck, InitSyn, Join, KeepAlive, Oam, OpenAck, OpenSyn,
+            TransportBody, TransportMessage,
+        },
+    };
+
     use crate::zenoh_impl::*;
 
+    // InitAck
     impl_for_struct! {
         struct InitAck {
             version: u8,
@@ -60,967 +53,459 @@ mod impl_for_init_ack {
         }
     }
 
-    impl AddToTree for InitAck {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            let hf_index = args.get_hf(&format!("{prefix}.version"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.version.into(),
-                );
-            }
+    // InitSyn
+    impl_for_struct! {
+        struct InitSyn {
+            version: u8,
+            whatami: WhatAmI,
+            zid: ZenohId,
+            resolution: Resolution,
+            batch_size: BatchSize,
+            ext_qos: Option<QoS>,
+            ext_shm: Option<Shm>,
+            ext_auth: Option<Auth>,
+            ext_mlink: Option<MultiLink>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.whatami"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(self.whatami.to_str())?,
-                );
-            }
+    // OpenSyn
+    impl_for_struct! {
+        struct OpenSyn {
+            lease: Duration,
+            initial_sn: TransportSn,
+            cookie: ZSlice,
+            ext_qos: Option<QoS>,
+            ext_shm: Option<Shm>,
+            ext_auth: Option<Auth>,
+            ext_mlink: Option<MultiLinkSyn>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.zid"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&self.zid.to_string())?,
-                );
-            }
+    // OpenAck
+    impl_for_struct! {
+        struct OpenAck {
+            lease: Duration,
+            initial_sn: TransportSn,
+            ext_qos: Option<QoS>,
+            ext_shm: Option<Shm>,
+            ext_auth: Option<Auth>,
+            ext_mlink: Option<MultiLinkAck>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.resolution"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.resolution.as_u8().into(),
-                );
-            }
+    // Close
+    impl_for_struct! {
+        struct Close {
+            reason: u8,
+            session: bool,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.batch_size"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.batch_size.into(),
-                );
-            }
+    // KeepAlive
+    impl_for_struct! {
+        struct KeepAlive {
 
-            Ok(())
+        }
+    }
+
+    // Frame
+    impl_for_struct! {
+        struct Frame {
+            reliability: Reliability,
+            sn: TransportSn,
+            ext_qos: QoSType,
+            #[dissect(vec)]
+            payload: Vec<NetworkMessage>,
+        }
+    }
+
+    // Fragment
+    impl_for_struct! {
+        struct Fragment {
+            reliability: Reliability,
+            more: bool,
+            sn: TransportSn,
+            payload: ZSlice,
+            ext_qos: QoSType,
+        }
+    }
+
+    // OAM
+    impl_for_struct! {
+        struct Oam {
+            id: OamId,
+            body: ZExtBody,
+            ext_qos: QoSType,
+        }
+    }
+
+    // Join
+    impl_for_struct! {
+        struct Join {
+            version: u8,
+            whatami: WhatAmI,
+            zid: ZenohId,
+            resolution: Resolution,
+            batch_size: BatchSize,
+            lease: Duration,
+            next_sn: PrioritySn,
+            ext_qos: Option<QoSType>,
+            ext_shm: Option<Shm>,
+        }
+    }
+
+    // TransportBody
+    impl_for_enum! {
+        enum TransportBody {
+            InitSyn(InitSyn),
+            InitAck(InitAck),
+            OpenSyn(OpenSyn),
+            OpenAck(OpenAck),
+            Close(Close),
+            KeepAlive(KeepAlive),
+            Frame(Frame),
+            Fragment(Fragment),
+            OAM(Oam),
+            Join(Join),
+        }
+    }
+
+    // TransportMessage
+    impl_for_struct! {
+        struct TransportMessage {
+            #[dissect(expand)]
+            body: TransportBody,
         }
     }
 }
 
-mod impl_for_init_syn {
+mod impl_for_zenoh {
+    use zenoh_protocol::zenoh::{
+        err::Err, query::Query, reply::Reply, Ack, Del, Pull, PushBody, Put, RequestBody,
+        ResponseBody,
+    };
+
     use crate::zenoh_impl::*;
 
-    impl IntoHFMap for InitSyn {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            // version
-            hf_map.insert(
-                format!("{prefix}.version"),
-                HeaderField {
-                    name: "Version".into(),
-                    kind: FieldKind::Number,
-                },
-            );
-
-            // whatmai
-            hf_map.insert(
-                format!("{prefix}.whatami"),
-                HeaderField {
-                    name: "WhatAmI".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // zid
-            hf_map.insert(
-                format!("{prefix}.zid"),
-                HeaderField {
-                    name: "ZenohId".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // resolution
-            hf_map.insert(
-                format!("{prefix}.resolution"),
-                HeaderField {
-                    name: "Resolution".into(),
-                    kind: FieldKind::Number,
-                },
-            );
-
-            // batch_size
-            hf_map.insert(
-                format!("{prefix}.batch_size"),
-                HeaderField {
-                    name: "BatchSize".into(),
-                    kind: FieldKind::Number,
-                },
-            );
-
-            hf_map
+    // Put
+    impl_for_struct! {
+        struct Put {
+            timestamp: Option<Timestamp>,
+            encoding: Encoding,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_unknown: Vec<ZExtUnknown>,
+            payload: ZBuf,
         }
     }
 
-    impl Sample for InitSyn {
-        fn sample() -> Self {
-            Self {
-                version: 0,
-                whatami: zenoh_protocol::core::WhatAmI::Peer,
-                zid: ZenohId::rand(),
-                resolution: 0.into(),
-                batch_size: 0,
-                ext_qos: None,
-                ext_shm: None,
-                ext_auth: None,
-                ext_mlink: None,
-            }
+    // Del
+    impl_for_struct! {
+        struct Del {
+            timestamp: Option<Timestamp>,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_unknown: Vec<ZExtUnknown>,
         }
     }
 
-    impl GenerateHFMap for InitSyn {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
+    // Query
+    impl_for_struct! {
+        struct Query {
+            parameters: String,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_consolidation: Consolidation,
+            ext_body: Option<QueryBodyType>,
+            ext_unknown: Vec<ZExtUnknown>,
         }
     }
 
-    impl AddToTree for InitSyn {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            let hf_index = args.get_hf(&format!("{prefix}.version"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.version.into(),
-                );
-            }
+    // Pull
+    impl_for_struct! {
+        struct Pull {
+            ext_unknown: Vec<ZExtUnknown>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.whatami"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(self.whatami.to_str())?,
-                );
-            }
+    // Reply
+    impl_for_struct! {
+        struct Reply {
+            timestamp: Option<Timestamp>,
+            encoding: Encoding,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_consolidation: ConsolidationType,
+            ext_unknown: Vec<ZExtUnknown>,
+            payload: ZBuf,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.zid"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&self.zid.to_string())?,
-                );
-            }
+    // Err
+    impl_for_struct! {
+        struct Err {
+            code: u16,
+            is_infrastructure: bool,
+            timestamp: Option<Timestamp>,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_body: Option<ErrBodyType>,
+            ext_unknown: Vec<ZExtUnknown>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.resolution"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.resolution.as_u8().into(),
-                );
-            }
+    // Ack
+    impl_for_struct! {
+        struct Ack {
+            timestamp: Option<Timestamp>,
+            ext_sinfo: Option<SourceInfoType>,
+            ext_unknown: Vec<ZExtUnknown>,
+        }
+    }
 
-            let hf_index = args.get_hf(&format!("{prefix}.batch_size"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.batch_size.into(),
-                );
-            }
+    // RequestBody
+    impl_for_enum! {
+        enum RequestBody {
+            Query(Query),
+            Put(Put),
+            Del(Del),
+            Pull(Pull),
+        }
+    }
 
-            Ok(())
+    // PushBody
+    impl_for_enum! {
+        enum PushBody {
+            Put(Put),
+            Del(Del),
+        }
+    }
+
+    // ResponseBody
+    impl_for_enum! {
+        enum ResponseBody {
+            Reply(Reply),
+            Err(Err),
+            Ack(Ack),
+            Put(Put),
         }
     }
 }
 
-mod impl_for_init_fragment {
+mod impl_for_network {
+
+    use zenoh_protocol::{
+        network::{
+            declare::FinalInterest, Declare, DeclareBody, DeclareInterest, DeclareKeyExpr,
+            DeclareQueryable, DeclareSubscriber, DeclareToken, NetworkBody, NetworkMessage, Oam,
+            Push, Request, Response, ResponseFinal, UndeclareInterest, UndeclareKeyExpr,
+            UndeclareQueryable, UndeclareSubscriber, UndeclareToken,
+        },
+        zenoh::{PushBody, RequestBody, ResponseBody},
+    };
+
     use crate::zenoh_impl::*;
 
-    impl IntoHFMap for Fragment {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            hf_map.insert(
-                format!("{prefix}.reliability"),
-                HeaderField {
-                    name: "Reliability".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map.insert(
-                format!("{prefix}.more"),
-                HeaderField {
-                    name: "More".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map.insert(
-                format!("{prefix}.sn"),
-                HeaderField {
-                    name: "TransportSn".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map.insert(
-                format!("{prefix}.payload"),
-                HeaderField {
-                    name: "Payload".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map.insert(
-                format!("{prefix}.ext_qos"),
-                HeaderField {
-                    name: "ExtQoS".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map
+    // Push
+    impl_for_struct! {
+        struct Push {
+            wire_expr: WireExpr<'static>,
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+            ext_nodeid: NodeIdType,
+            #[dissect(expand)]
+            payload: PushBody,
         }
     }
 
-    impl Sample for Fragment {
-        fn sample() -> Self {
-            Fragment::rand()
+    // Request
+    impl_for_struct! {
+        struct Request {
+            id: RequestId,
+            wire_expr: WireExpr<'static>,
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+            ext_nodeid: NodeIdType,
+            ext_target: TargetType,
+            ext_budget: Option<BudgetType>,
+            ext_timeout: Option<TimeoutType>,
+            #[dissect(expand)]
+            payload: RequestBody,
         }
     }
 
-    impl GenerateHFMap for Fragment {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
+    // Response
+    impl_for_struct! {
+        struct Response {
+            rid: RequestId,
+            wire_expr: WireExpr<'static>,
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+            ext_respid: Option<ResponderIdType>,
+            #[dissect(expand)]
+            payload: ResponseBody,
         }
     }
 
-    impl AddToTree for Fragment {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            let hf_index = args.get_hf(&format!("{prefix}.reliability"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.reliability))?,
-                );
+    // ResponseFinal
+    impl_for_struct! {
+        struct ResponseFinal {
+            rid: RequestId,
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+        }
+    }
+
+    mod impl_for_declare {
+
+        use zenoh_protocol::network::{
+            declare::FinalInterest, DeclareInterest, DeclareKeyExpr, DeclareQueryable,
+            DeclareSubscriber, DeclareToken, UndeclareInterest, UndeclareKeyExpr,
+            UndeclareQueryable, UndeclareSubscriber, UndeclareToken,
+        };
+
+        use crate::zenoh_impl::*;
+
+        // DeclareKeyExpr
+        impl_for_struct! {
+            struct DeclareKeyExpr {
+                id: ExprId,
+                wire_expr: WireExpr<'static>,
             }
+        }
 
-            let hf_index = args.get_hf(&format!("{prefix}.more"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.more))?,
-                );
+        // UndeclareKeyExpr
+        impl_for_struct! {
+            struct UndeclareKeyExpr {
+                id: ExprId,
             }
+        }
 
-            let hf_index = args.get_hf(&format!("{prefix}.sn"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.sn))?,
-                );
+        // DeclareSubscriber
+        impl_for_struct! {
+            struct DeclareSubscriber {
+                id: SubscriberId,
+                wire_expr: WireExpr<'static>,
+                ext_info: SubscriberInfo,
             }
+        }
 
-            let hf_index = args.get_hf(&format!("{prefix}.payload"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.payload))?,
-                );
+        // UndeclareSubscriber
+        impl_for_struct! {
+            struct UndeclareSubscriber {
+                id: SubscriberId,
+                ext_wire_expr: WireExprType,
             }
+        }
 
-            let hf_index = args.get_hf(&format!("{prefix}.ext_qos"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.ext_qos))?,
-                );
+        // DeclareQueryable
+        impl_for_struct! {
+            struct DeclareQueryable {
+                id: QueryableId,
+                wire_expr: WireExpr<'static>,
+                ext_info: QueryableInfo,
             }
-
-            Ok(())
         }
-    }
-}
 
-mod imp_for_transport_body {
-    use crate::zenoh_impl::*;
-
-    impl Sample for TransportBody {
-        fn sample() -> Self {
-            Self::InitSyn(InitSyn::sample())
-        }
-    }
-
-    impl IntoHFMap for TransportBody {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-            hf_map.insert(
-                format!("{prefix}"),
-                HeaderField {
-                    name: "TransportBody".into(),
-                    kind: FieldKind::Branch,
-                },
-            );
-
-            let branches = match self {
-                Self::InitSyn(body) => body.into_hf_map(&format!("{prefix}.init_syn")),
-                Self::Frame(body) => body.into_hf_map(&format!("{prefix}.frame")),
-                Self::Fragment(body) => body.into_hf_map(&format!("{prefix}.fragment")),
-                _ => {
-                    todo!()
-                }
-            };
-            hf_map.extend(branches);
-            hf_map
-        }
-    }
-
-    impl GenerateHFMap for TransportBody {
-        fn span() -> Span<Self> {
-            Span::Enum(vec![
-                Self::InitSyn(InitSyn::rand()),
-                Self::Frame(Frame::rand()),
-                Self::Fragment(Fragment::rand()),
-            ])
-        }
-    }
-
-    impl AddToTree for TransportBody {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            match self {
-                Self::InitSyn(body) => {
-                    body.add_to_tree(
-                        &format!("{prefix}.init_syn"),
-                        &args.make_subtree(prefix, &format!("TransportBody (InitSyn)"))?
-                    )?;
-                }
-                Self::Frame(body) => {
-                    body.add_to_tree(
-                        &format!("{prefix}.frame"),
-                        &args.make_subtree(prefix, &format!("TransportBody (Frame)"))?
-                    )?;
-                }
-                Self::Fragment(body) => {
-                    body.add_to_tree(
-                        &format!("{prefix}.fragment"),
-                        &args.make_subtree(prefix, &format!("TransportBody (Fragment)"))?
-                    )?;
-                }
-                _ => {
-                    bail!("Not implemented yet.");
-                }
+        // UndeclareQueryable
+        impl_for_struct! {
+            struct UndeclareQueryable {
+                id: QueryableId,
+                ext_wire_expr: WireExprType,
             }
-            Ok(())
         }
-    }
-}
 
-mod impl_for_transport_message {
-    use crate::zenoh_impl::*;
-
-    impl Sample for TransportMessage {
-        fn sample() -> Self {
-            Self::rand()
+        // DeclareToken
+        impl_for_struct! {
+            struct DeclareToken {
+                id: TokenId,
+                wire_expr: WireExpr<'static>,
+            }
         }
-    }
 
-    impl IntoHFMap for TransportMessage {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            TransportBody::generate_hf_map(&format!("{prefix}.body"))
+        // UndeclareToken
+        impl_for_struct! {
+            struct UndeclareToken {
+                id: TokenId,
+                ext_wire_expr: WireExprType,
+            }
         }
-    }
 
-    impl GenerateHFMap for TransportMessage {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
+        // DeclareInterest
+        impl_for_struct! {
+            struct DeclareInterest {
+                id: InterestId,
+                wire_expr: WireExpr<'static>,
+                interest: Interest,
+            }
         }
-    }
 
-    impl AddToTree for TransportMessage {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            self.body.add_to_tree(&format!("{prefix}.body"), args)
+        // FinalInterest
+        impl_for_struct! {
+            struct FinalInterest {
+                id: InterestId,
+            }
         }
-    }
-}
 
-mod impl_for_put {
-    use crate::zenoh_impl::*;
-
-    impl Sample for Put {
-        fn sample() -> Self {
-            Put {
-                timestamp: None,
-                encoding: Encoding::TEXT_PLAIN,
-                ext_sinfo: None,
-                ext_unknown: vec![],
-                payload: vec![].into(),
+        // UndeclareInterest
+        impl_for_struct! {
+            struct UndeclareInterest {
+                id: InterestId,
+                ext_wire_expr: WireExprType,
             }
         }
     }
 
-    impl IntoHFMap for Put {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            // timestamp
-            hf_map.insert(
-                format!("{prefix}.timestamp"),
-                HeaderField {
-                    name: "Timestamp".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // encoding
-            hf_map.insert(
-                format!("{prefix}.encoding"),
-                HeaderField {
-                    name: "Encoding".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // payload
-            hf_map.insert(
-                format!("{prefix}.payload"),
-                HeaderField {
-                    name: "Payload".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            hf_map
+    // DeclareBody
+    impl_for_enum! {
+        enum DeclareBody {
+            DeclareKeyExpr(DeclareKeyExpr),
+            UndeclareKeyExpr(UndeclareKeyExpr),
+            DeclareSubscriber(DeclareSubscriber),
+            UndeclareSubscriber(UndeclareSubscriber),
+            DeclareQueryable(DeclareQueryable),
+            UndeclareQueryable(UndeclareQueryable),
+            DeclareToken(DeclareToken),
+            UndeclareToken(UndeclareToken),
+            DeclareInterest(DeclareInterest),
+            FinalInterest(FinalInterest),
+            UndeclareInterest(UndeclareInterest),
         }
     }
 
-    impl GenerateHFMap for Put {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
+    // Declare
+    impl_for_struct! {
+        struct Declare {
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+            ext_nodeid: NodeIdType,
+            #[dissect(expand)]
+            body: DeclareBody,
         }
     }
 
-    impl AddToTree for Put {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            if let Some(timestamp) = self.timestamp {
-                let hf_index = args.get_hf(&format!("{prefix}.timestamp"))?;
-                unsafe {
-                    epan_sys::proto_tree_add_string(
-                        args.tree,
-                        hf_index,
-                        args.tvb,
-                    args.start as _,
-                    args.length as _,
-                        nul_terminated_str(&format!("{:?}", self.timestamp))?,
-                    );
-                }
-            }
-
-            let hf_index = args.get_hf(&format!("{prefix}.encoding"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&self.encoding.to_string())?,
-                );
-            }
-
-            let hf_index = args.get_hf(&format!("{prefix}.payload"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.payload))?,
-                );
-            }
-
-            Ok(())
-        }
-    }
-}
-
-mod impl_for_del {
-    use crate::zenoh_impl::*;
-
-    impl Sample for Del {
-        fn sample() -> Self {
-            Del {
-                timestamp: None,
-                ext_sinfo: None,
-                ext_unknown: vec![],
-            }
+    // Oam
+    impl_for_struct! {
+        struct Oam {
+            id: OamId,
+            ext_qos: QoSType,
+            ext_tstamp: Option<TimestampType>,
+            body: ZExtBody,
         }
     }
 
-    impl IntoHFMap for Del {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            // timestamp
-            hf_map.insert(
-                format!("{prefix}.timestamp"),
-                HeaderField {
-                    name: "Timestamp".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-            hf_map
+    // NetworkBody
+    impl_for_enum! {
+        enum NetworkBody {
+            Push(Push),
+            Request(Request),
+            Response(Response),
+            ResponseFinal(ResponseFinal),
+            Declare(Declare),
+            OAM(Oam),
         }
     }
 
-    impl GenerateHFMap for Del {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
-        }
-    }
-
-    impl AddToTree for Del {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            if let Some(timestamp) = self.timestamp {
-                let hf_index = args.get_hf(&format!("{prefix}.timestamp"))?;
-                unsafe {
-                    epan_sys::proto_tree_add_string(
-                        args.tree,
-                        hf_index,
-                        args.tvb,
-                        args.start as _,
-                        args.length as _,
-                        nul_terminated_str(&format!("{:?}", self.timestamp))?,
-                    );
-                }
-            }
-
-            Ok(())
-        }
-    }
-}
-
-mod impl_for_push_body {
-    use crate::zenoh_impl::*;
-
-    impl Sample for PushBody {
-        fn sample() -> Self {
-            PushBody::Put(Put::sample())
-        }
-    }
-
-    impl IntoHFMap for PushBody {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-            hf_map.insert(
-                format!("{prefix}"),
-                HeaderField {
-                    name: "PushBody".into(),
-                    kind: FieldKind::Branch,
-                },
-            );
-            let branches = {
-                match self {
-                    Self::Put(body) => body.into_hf_map(&format!("{prefix}.put")),
-                    Self::Del(body) => body.into_hf_map(&format!("{prefix}.del")),
-                }
-            };
-            hf_map.extend(branches);
-            hf_map
-        }
-    }
-
-    impl GenerateHFMap for PushBody {
-        fn span() -> Span<Self> {
-            Span::Enum(vec![Self::Put(Put::sample()), Self::Del(Del::sample())])
-        }
-    }
-
-    impl AddToTree for PushBody {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            match self {
-                PushBody::Put(body) => body.add_to_tree(
-                    &format!("{prefix}.put"),
-                    &args.make_subtree(prefix, &format!("PushBody (Put)"))?
-                ),
-                PushBody::Del(body) => body.add_to_tree(
-                    &format!("{prefix}.del"),
-                    &args.make_subtree(prefix, &format!("PushBody (Del)"))?
-                ),
-            }
-        }
-    }
-}
-
-mod impl_for_push {
-    use crate::zenoh_impl::*;
-
-    impl Sample for Push {
-        fn sample() -> Self {
-            Push::rand()
-        }
-    }
-
-    impl IntoHFMap for Push {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            // wire_expr
-            hf_map.insert(
-                format!("{prefix}.wire_expr"),
-                HeaderField {
-                    name: "WireExpr".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // ext_qos
-            hf_map.insert(
-                format!("{prefix}.ext_qos"),
-                HeaderField {
-                    name: "ExtQoS".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // ext_tstamp
-            hf_map.insert(
-                format!("{prefix}.ext_tstamp"),
-                HeaderField {
-                    name: "ExtTimestampType".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // ext_nodeid
-            hf_map.insert(
-                format!("{prefix}.ext_nodeid"),
-                HeaderField {
-                    name: "ExtNodeId".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // payload
-            hf_map.extend(PushBody::generate_hf_map(&format!("{prefix}.payload")));
-
-            hf_map
-        }
-    }
-
-    impl GenerateHFMap for Push {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
-        }
-    }
-
-    impl AddToTree for Push {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            let hf_index = args.get_hf(&format!("{prefix}.wire_expr"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(self.wire_expr.as_str())?,
-                );
-            }
-
-            let hf_index = args.get_hf(&format!("{prefix}.ext_qos"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.ext_qos))?,
-                );
-            }
-
-            if let Some(ext_tstamp) = self.ext_tstamp {
-                let hf_index = args.get_hf(&format!("{prefix}.ext_tstamp"))?;
-                unsafe {
-                    epan_sys::proto_tree_add_string(
-                        args.tree,
-                        hf_index,
-                        args.tvb,
-                        args.start as _,
-                        args.length as _,
-                        nul_terminated_str(&format!("{:?}", ext_tstamp))?,
-                    );
-                }
-            }
-
-            let hf_index = args.get_hf(&format!("{prefix}.ext_nodeid"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.ext_nodeid))?,
-                );
-            }
-
-            self.payload
-                .add_to_tree(&format!("{prefix}.payload"), args)?;
-
-            Ok(())
-        }
-    }
-}
-
-mod impl_for_network_body {
-    use crate::zenoh_impl::*;
-
-    impl Sample for NetworkBody {
-        fn sample() -> Self {
-            NetworkBody::Push(Push::sample())
-        }
-    }
-
-    impl IntoHFMap for NetworkBody {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-            hf_map.insert(
-                format!("{prefix}"),
-                HeaderField {
-                    name: "NetworkBody".into(),
-                    kind: FieldKind::Branch,
-                },
-            );
-            let branches = {
-                match self {
-                    Self::Push(body) => body.into_hf_map(&format!("{prefix}.push")),
-                    _ => {
-                        todo!()
-                    }
-                }
-            };
-            hf_map.extend(branches);
-            hf_map
-        }
-    }
-
-    impl GenerateHFMap for NetworkBody {
-        fn span() -> Span<Self> {
-            Span::Enum(vec![Self::Push(Push::sample())])
-        }
-    }
-
-    impl AddToTree for NetworkBody {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            match self {
-                NetworkBody::Push(body) => body.add_to_tree(
-                    &format!("{prefix}.push"),
-                    &args.make_subtree(prefix, &format!("NetworkBody (Push)"))?,
-                ),
-                _ => bail!("Not implemented yet"),
-            }
-        }
-    }
-}
-
-mod impl_for_frame {
-    use crate::zenoh_impl::*;
-
-    impl Sample for Frame {
-        fn sample() -> Self {
-            Frame::rand()
-        }
-    }
-
-    impl IntoHFMap for Frame {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new();
-
-            // reliability
-            hf_map.insert(
-                format!("{prefix}.reliability"),
-                HeaderField {
-                    name: "Reliability".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // sn
-            hf_map.insert(
-                format!("{prefix}.sn"),
-                HeaderField {
-                    name: "TransportSn".into(),
-                    kind: FieldKind::Number,
-                },
-            );
-
-            // ext_qos
-            hf_map.insert(
-                format!("{prefix}.ext_qos"),
-                HeaderField {
-                    name: "QoSType".into(),
-                    kind: FieldKind::Text,
-                },
-            );
-
-            // payload
-            hf_map.insert(
-                format!("{prefix}.payload"),
-                HeaderField {
-                    name: "Payload".into(),
-                    kind: FieldKind::Branch,
-                },
-            );
-            hf_map.extend(NetworkMessage::generate_hf_map(&format!(
-                "{prefix}.payload"
-            )));
-
-            hf_map
-        }
-    }
-
-    impl GenerateHFMap for Frame {
-        fn span() -> Span<Self> {
-            Span::Enum(vec![Self::sample()])
-        }
-    }
-
-    impl AddToTree for Frame {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            let hf_index = args.get_hf(&format!("{prefix}.reliability"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.reliability))?,
-                );
-            }
-
-            let hf_index = args.get_hf(&format!("{prefix}.sn"))?;
-            unsafe {
-                epan_sys::proto_tree_add_uint(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    self.sn.into(),
-                );
-            }
-
-            // payload
-            let payload_args = args.make_subtree(&format!("{prefix}.payload"), &format!("Payload"))?;
-            for msg in &self.payload {
-                msg.add_to_tree(&format!("{prefix}.payload"), &payload_args)?;
-            }
-
-            // ext_qos
-            let hf_index = args.get_hf(&format!("{prefix}.ext_qos"))?;
-            unsafe {
-                epan_sys::proto_tree_add_string(
-                    args.tree,
-                    hf_index,
-                    args.tvb,
-                    args.start as _,
-                    args.length as _,
-                    nul_terminated_str(&format!("{:?}", self.ext_qos))?,
-                );
-            }
-
-            Ok(())
-        }
-    }
-}
-
-mod impl_for_network_message {
-    use crate::zenoh_impl::*;
-
-    impl Sample for NetworkMessage {
-        fn sample() -> Self {
-            NetworkMessage::rand()
-        }
-    }
-
-    impl IntoHFMap for NetworkMessage {
-        fn into_hf_map(self, prefix: &str) -> HeaderFieldMap {
-            NetworkBody::generate_hf_map(&format!("{prefix}.body"))
-        }
-    }
-
-    impl GenerateHFMap for NetworkMessage {
-        fn span() -> Span<Self> {
-            Span::Struct(Self::sample())
-        }
-    }
-
-    impl AddToTree for NetworkMessage {
-        fn add_to_tree(&self, prefix: &str, args: &TreeArgs) -> Result<()> {
-            self.body.add_to_tree(&format!("{prefix}.body"), args)
+    // NetworkMessage
+    impl_for_struct! {
+        struct NetworkMessage {
+            #[dissect(expand)]
+            body: NetworkBody,
         }
     }
 }

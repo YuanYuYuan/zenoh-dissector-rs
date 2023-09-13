@@ -1,7 +1,4 @@
-use crate::{
-    test_msg::{Body, InitSyn, Message},
-    utils::nul_terminated_str,
-};
+use crate::utils::nul_terminated_str;
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 
@@ -40,12 +37,9 @@ impl TreeArgs<'_> {
                 self.tvb,
                 self.start as _,
                 self.length as _,
-                nul_terminated_str(name).unwrap()
+                nul_terminated_str(name).unwrap(),
             );
-            let subtree = epan_sys::proto_item_add_subtree(
-                ti,
-                ett,
-            );
+            let subtree = epan_sys::proto_item_add_subtree(ti, ett);
             subtree
         };
 

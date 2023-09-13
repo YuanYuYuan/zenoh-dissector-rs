@@ -1,9 +1,6 @@
-use std::collections::HashMap;
 use epan_sys::{ftenum, field_display_e};
 use crate::{header_field::FieldKind, utils::nul_terminated_str};
 use anyhow::Result;
-
-// pub type WSHeaderFieldMap = HashMap<String, HeaderField>;
 
 impl FieldKind {
     pub fn convert(self) -> (field_display_e, ftenum) {
