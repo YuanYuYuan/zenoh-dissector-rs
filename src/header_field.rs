@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-
 #[derive(Debug, Clone)]
 pub struct HeaderField {
     pub name: String,
@@ -42,14 +41,13 @@ impl HeaderFieldMap {
         } else {
             format!("{prefix}.{name}")
         };
-        self.0
-            .insert(
-                key,
-                HeaderField {
-                    name: display_name.into(),
-                    kind,
-                },
-            );
+        self.0.insert(
+            key,
+            HeaderField {
+                name: display_name.into(),
+                kind,
+            },
+        );
         self
     }
 }

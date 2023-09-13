@@ -1,22 +1,22 @@
+mod header_field;
+mod macros;
+mod tree;
 mod utils;
 mod wireshark;
-mod tree;
-mod header_field;
 mod zenoh_impl;
-mod macros;
 
+use anyhow::Result;
+use header_field::GenerateHFMap;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use tree::{AddToTree, TreeArgs};
 use utils::nul_terminated_str;
 use wireshark::register_header_field;
-use tree::{TreeArgs, AddToTree};
-use zenoh_impl::ZenohProtocol;
-use header_field::GenerateHFMap;
-use zenoh_protocol::transport::{BatchSize, TransportMessage};
-use zenoh_codec::{RCodec, Zenoh080};
 use zenoh_buffers::reader::HasReader;
 use zenoh_buffers::reader::Reader;
-use anyhow::Result;
+use zenoh_codec::{RCodec, Zenoh080};
+use zenoh_impl::ZenohProtocol;
+use zenoh_protocol::transport::{BatchSize, TransportMessage};
 
 #[no_mangle]
 #[used]
@@ -27,7 +27,6 @@ static plugin_want_major: std::ffi::c_int = 4;
 #[no_mangle]
 #[used]
 static plugin_want_minor: std::ffi::c_int = 0;
-
 
 #[no_mangle]
 #[used]
@@ -75,12 +74,7 @@ fn register_zenoh_protocol() -> Result<()> {
         for (key, hf) in hf_map {
             data.borrow_mut().hf_map.insert(
                 key.to_string(),
-                register_header_field(
-                    proto_id,
-                    &hf.name,
-                    &key,
-                    hf.kind,
-                )?
+                register_header_field(proto_id, &hf.name, &key, hf.kind)?,
             );
         }
 
@@ -105,10 +99,7 @@ unsafe extern "C" fn register_handoff() {
     PROTOCOL_DATA.with(|data| {
         let proto_id = data.borrow().id;
         unsafe {
-            let handle = epan_sys::create_dissector_handle(
-                Some(dissect_main),
-                proto_id,
-            );
+            let handle = epan_sys::create_dissector_handle(Some(dissect_main), proto_id);
             epan_sys::dissector_add_uint(
                 "tcp.port\u{0}".as_ptr() as *const std::ffi::c_char,
                 7447u32 as std::ffi::c_uint,
@@ -118,23 +109,18 @@ unsafe extern "C" fn register_handoff() {
     });
 }
 
-
 unsafe extern "C" fn dissect_main(
     tvb: *mut epan_sys::tvbuff,
     pinfo: *mut epan_sys::_packet_info,
     tree: *mut epan_sys::_proto_node,
     _data: *mut std::ffi::c_void,
 ) -> std::ffi::c_int {
-
     epan_sys::col_set_str(
         (*pinfo).cinfo,
         epan_sys::COL_PROTOCOL as std::ffi::c_int,
         nul_terminated_str("Zenoh").unwrap(),
     );
-    epan_sys::col_clear(
-        (*pinfo).cinfo,
-        epan_sys::COL_INFO as std::ffi::c_int,
-    );
+    epan_sys::col_clear((*pinfo).cinfo, epan_sys::COL_INFO as std::ffi::c_int);
     let tvb_len = unsafe { epan_sys::tvb_reported_length(tvb) as usize };
     let mut tvb_buf = Vec::<u8>::new();
     // dbg!(&tvb_len);
@@ -153,65 +139,64 @@ unsafe extern "C" fn dissect_main(
     let mut reader = tvb_buf.reader();
 
     let root_key = "zenoh";
-    PROTOCOL_DATA.with(|data| {
+    PROTOCOL_DATA
+        .with(|data| {
+            let tree_args = TreeArgs {
+                tree,
+                tvb,
+                hf_map: &data.borrow().hf_map,
+                start: 0,
+                length: 0,
+            };
 
-        let tree_args = TreeArgs {
-            tree,
-            tvb,
-            hf_map: &data.borrow().hf_map,
-            start: 0,
-            length: 0,
-        };
+            let mut tree_args = tree_args.make_subtree(root_key, "Zenoh Protocol")?;
 
-        let mut tree_args = tree_args.make_subtree(root_key, "Zenoh Protocol")?;
+            while reader.len() >= 2 {
+                // Length of sliced message
+                let mut length = [0_u8, 0u8];
+                reader.read_exact(&mut length).unwrap();
+                let n = BatchSize::from_le_bytes(length) as usize;
+                // let n = length[1] as usize * 16 + length[0] as usize;
+                // let n = u16::from_le_bytes([length[0], length[1]]) as usize;
 
-        while reader.len() >= 2 {
-
-            // Length of sliced message
-            let mut length = [0_u8, 0u8];
-            reader.read_exact(&mut length).unwrap();
-            let n = BatchSize::from_le_bytes(length) as usize;
-            // let n = length[1] as usize * 16 + length[0] as usize;
-            // let n = u16::from_le_bytes([length[0], length[1]]) as usize;
-
-            if n > reader.len() {
-                (*pinfo).desegment_offset = 0;
-                (*pinfo).desegment_len = epan_sys::DESEGMENT_ONE_MORE_SEGMENT;
-                println!("Skip since n={} >= reader.len()={}", n, reader.len());
-                break;
-            }
-
-            assert!(0 < n && n <= MTU, "{}", n);
-
-            // Read sliced message into a buffer
-            let mut buf = vec![0_u8; MTU];
-            reader.read_exact(&mut buf[0..n]).unwrap();
-
-
-            // Update the range of the buffer to display
-            tree_args.length = 2 + n;
-
-            // println!("[#{counter}] n={}, remaining: {}", n, reader.remaining());
-
-            // Read and decode the bytes to TransportMessage
-            match <Zenoh080 as RCodec<TransportMessage, _>>::read(codec, &mut buf.reader()) {
-                Ok(msg) => {
-                    // dbg!((counter, reader.remaining(), &msg));
-                    if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
-                        dbg!(err);
-                    }
-                },
-                Err(err) => {
-                    dbg!("Decode error!", err);
+                if n > reader.len() {
+                    (*pinfo).desegment_offset = 0;
+                    (*pinfo).desegment_len = epan_sys::DESEGMENT_ONE_MORE_SEGMENT;
+                    println!("Skip since n={} >= reader.len()={}", n, reader.len());
+                    break;
                 }
-            }
 
-            // Update the range of the buffer to display
-            tree_args.start += tree_args.length;
-            counter += 1;
-        }
-        anyhow::Ok(())
-    }).unwrap();
+                assert!(0 < n && n <= MTU, "{}", n);
+
+                // Read sliced message into a buffer
+                let mut buf = vec![0_u8; MTU];
+                reader.read_exact(&mut buf[0..n]).unwrap();
+
+                // Update the range of the buffer to display
+                tree_args.length = 2 + n;
+
+                // println!("[#{counter}] n={}, remaining: {}", n, reader.remaining());
+
+                // Read and decode the bytes to TransportMessage
+                match <Zenoh080 as RCodec<TransportMessage, _>>::read(codec, &mut buf.reader()) {
+                    Ok(msg) => {
+                        // dbg!((counter, reader.remaining(), &msg));
+                        if let Err(err) = msg.add_to_tree("zenoh", &tree_args) {
+                            dbg!(err);
+                        }
+                    }
+                    Err(err) => {
+                        dbg!("Decode error!", err);
+                    }
+                }
+
+                // Update the range of the buffer to display
+                tree_args.start += tree_args.length;
+                counter += 1;
+            }
+            anyhow::Ok(())
+        })
+        .unwrap();
 
     tvb_len as _
 }

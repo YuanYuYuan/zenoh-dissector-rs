@@ -136,5 +136,5 @@ macro_rules! impl_for_struct {
     };
 }
 
-pub(crate) use impl_for_struct;
 pub(crate) use impl_for_enum;
+pub(crate) use impl_for_struct;

@@ -1,6 +1,6 @@
-use epan_sys::{ftenum, field_display_e};
 use crate::{header_field::FieldKind, utils::nul_terminated_str};
 use anyhow::Result;
+use epan_sys::{field_display_e, ftenum};
 
 impl FieldKind {
     pub fn convert(self) -> (field_display_e, ftenum) {
@@ -24,7 +24,6 @@ impl FieldKind {
         }
     }
 }
-
 
 pub fn register_header_field(
     proto_id: i32,

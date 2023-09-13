@@ -5,21 +5,17 @@ use crate::utils::nul_terminated_str;
 use anyhow::Result;
 use convert_case::{Case, Casing};
 
-
-
 pub struct ZenohProtocol;
 
 mod impl_for_zenoh_protocol {
     use super::ZenohProtocol;
-    use crate::header_field::{
-        FieldKind, GenerateHFMap, HeaderFieldMap,
-    };
+    use crate::header_field::{FieldKind, GenerateHFMap, HeaderFieldMap};
     use zenoh_protocol::transport::TransportMessage;
 
     impl GenerateHFMap for ZenohProtocol {
         fn generate_hf_map(prefix: &str) -> HeaderFieldMap {
-            let mut hf_map = HeaderFieldMap::new()
-                .add(prefix, "", "ZenohProtocol", FieldKind::Branch);
+            let mut hf_map =
+                HeaderFieldMap::new().add(prefix, "", "ZenohProtocol", FieldKind::Branch);
             hf_map.extend(TransportMessage::generate_hf_map(prefix));
             hf_map
         }
