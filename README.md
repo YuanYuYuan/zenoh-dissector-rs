@@ -4,17 +4,19 @@
 
 ## Usage
 
+
 Build the plugin
 
 ```bash
-cargo build
+cargo build --release
 ```
 
 Place the plugin properly
 
 ```bash
-ln -snf $(realpath ./target/debug/libzenoh_dissector.so) ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector.so
+ln -snf $(realpath ./target/release/libzenoh_dissector.so) ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector.so
 ```
+
 
 ## Sample Data
 

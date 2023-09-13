@@ -562,3 +562,4 @@ fn add_to_tree_format_value_int(
 - Properly setup the subtree branch
 - Intrusive way: using procedural macros
 - make reason in `zenoh_protocol::transport::close::Close` transparent and implement the Display for it
+- Decode the payload in wireshark given the encoding is TextPlain
