@@ -6,8 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# wsdf = "0.1.2"
-wsdf = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/wsdf"}
 epan-sys = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/epan-sys"}
 zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh/zenoh"}
 zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-protocol"}

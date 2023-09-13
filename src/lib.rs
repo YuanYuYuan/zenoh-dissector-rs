@@ -53,7 +53,7 @@ extern "C" fn plugin_register() {
     unsafe {
         PLUG.register_protoinfo = Some(register_protoinfo);
         PLUG.register_handoff = Some(register_handoff);
-        wsdf::epan_sys::proto_register_plugin(&PLUG);
+        epan_sys::proto_register_plugin(&PLUG);
     }
 }
 
@@ -109,7 +109,7 @@ unsafe extern "C" fn register_handoff() {
                 Some(dissect_main),
                 proto_id,
             );
-            wsdf::epan_sys::dissector_add_uint(
+            epan_sys::dissector_add_uint(
                 "tcp.port\u{0}".as_ptr() as *const std::ffi::c_char,
                 7447u32 as std::ffi::c_uint,
                 handle,
