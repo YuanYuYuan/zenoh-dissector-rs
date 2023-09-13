@@ -29,7 +29,7 @@ impl TreeArgs<'_> {
         }
         let ett = unsafe { *ett_ptr };
 
-        let mut new_args = self.clone();
+        let mut new_args = *self;
         new_args.tree = unsafe {
             let ti = epan_sys::proto_tree_add_none_format(
                 self.tree,
@@ -39,8 +39,8 @@ impl TreeArgs<'_> {
                 self.length as _,
                 nul_terminated_str(name).unwrap(),
             );
-            let subtree = epan_sys::proto_item_add_subtree(ti, ett);
-            subtree
+            
+            epan_sys::proto_item_add_subtree(ti, ett)
         };
 
         Ok(new_args)

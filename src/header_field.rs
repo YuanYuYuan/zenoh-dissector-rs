@@ -6,11 +6,11 @@ pub struct HeaderField {
     pub kind: FieldKind,
 }
 
-type HFM = HashMap<String, HeaderField>;
-pub struct HeaderFieldMap(HFM);
+type Hfm = HashMap<String, HeaderField>;
+pub struct HeaderFieldMap(Hfm);
 
 impl std::ops::Deref for HeaderFieldMap {
-    type Target = HFM;
+    type Target = Hfm;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -23,8 +23,8 @@ impl std::ops::DerefMut for HeaderFieldMap {
 }
 
 impl IntoIterator for HeaderFieldMap {
-    type Item = <HFM as IntoIterator>::Item;
-    type IntoIter = <HFM as IntoIterator>::IntoIter;
+    type Item = <Hfm as IntoIterator>::Item;
+    type IntoIter = <Hfm as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
@@ -36,8 +36,8 @@ impl HeaderFieldMap {
     }
 
     pub fn add(mut self, prefix: &str, name: &str, display_name: &str, kind: FieldKind) -> Self {
-        let key = if name == "" {
-            format!("{prefix}")
+        let key = if name.is_empty() {
+            prefix.to_string()
         } else {
             format!("{prefix}.{name}")
         };
