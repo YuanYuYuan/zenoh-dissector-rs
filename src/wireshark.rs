@@ -5,22 +5,22 @@ use anyhow::Result;
 impl FieldKind {
     pub fn convert(self) -> (field_display_e, ftenum) {
         match self {
-            Self::Number => (
-                epan_sys::field_display_e_BASE_DEC,
-                epan_sys::ftenum_FT_UINT8,
-            ),
             Self::Text => (
                 epan_sys::field_display_e_BASE_NONE,
                 epan_sys::ftenum_FT_STRING,
-            ),
-            Self::Bytes => (
-                epan_sys::field_display_e_SEP_SPACE,
-                epan_sys::ftenum_FT_BYTES,
             ),
             Self::Branch => (
                 epan_sys::field_display_e_BASE_NONE,
                 epan_sys::ftenum_FT_NONE,
             ),
+            // Self::Number => (
+            //     epan_sys::field_display_e_BASE_DEC,
+            //     epan_sys::ftenum_FT_UINT8,
+            // ),
+            // Self::Bytes => (
+            //     epan_sys::field_display_e_SEP_SPACE,
+            //     epan_sys::ftenum_FT_BYTES,
+            // ),
         }
     }
 }

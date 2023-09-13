@@ -10,24 +10,12 @@ edition = "2021"
 wsdf = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/wsdf"}
 epan-sys = {path = "/home/circle/Workings/ZettaScale/project/dissector/wsdf/epan-sys"}
 zenoh = {path="/home/circle/Workings/ZettaScale/src/zenoh/zenoh"}
-zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-protocol", features = ["test"]}
+zenoh-protocol = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-protocol"}
 zenoh-codec = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-codec"}
 zenoh-buffers = {path="/home/circle/Workings/ZettaScale/src/zenoh/commons/zenoh-buffers"}
 anyhow = "1.0.75"
 convert_case = "0.6.0"
 
 
-# [lib]
-# crate-type = ["cdylib"]
-
-[[example]]
-name = "simple_struct"
-crate-type = ["cdylib"]
-
-[[example]]
-name = "dev_dissect"
-crate-type = ["cdylib"]
-
-[[example]]
-name = "dev_zenoh"
+[lib]
 crate-type = ["cdylib"]

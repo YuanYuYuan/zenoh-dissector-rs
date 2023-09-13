@@ -11,11 +11,14 @@ rm -f ~/.local/lib/wireshark/plugins/4.0/epan/*.so
 # cargo build --example dev_dissect
 # ln -snf $(realpath ./target/debug/examples/libdev_dissect.so) ~/.local/lib/wireshark/plugins/4.0/epan/libdev_dissect.so
 
-cargo build --example dev_zenoh
-ln -snf $(realpath ./target/debug/examples/libdev_zenoh.so) ~/.local/lib/wireshark/plugins/4.0/epan/libdev_zenoh.so
+# cargo build --example dev_zenoh
+# ln -snf $(realpath ./target/debug/examples/libdev_zenoh.so) ~/.local/lib/wireshark/plugins/4.0/epan/libdev_zenoh.so
 
 # cargo build --example dev_zenoh --release
 # ln -snf $(realpath ./target/release/examples/libdev_zenoh.so) ~/.local/lib/wireshark/plugins/4.0/epan/libdev_zenoh.so
+
+cargo build
+ln -snf $(realpath ./target/debug/libzenoh_dissector.so) ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector.so
 
 wireshark -r ./new-protocol.pcap
 # wireshark -r ./new-protocol-sub.pcap

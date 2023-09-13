@@ -56,10 +56,10 @@ impl HeaderFieldMap {
 
 #[derive(Debug, Copy, Clone)]
 pub enum FieldKind {
-    Number,
     Text,
-    Bytes,
     Branch,
+    // Number,
+    // Bytes,
 }
 
 pub trait GenerateHFMap {
