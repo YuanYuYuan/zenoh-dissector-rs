@@ -101,8 +101,13 @@ unsafe extern "C" fn register_handoff() {
         unsafe {
             let handle = epan_sys::create_dissector_handle(Some(dissect_main), proto_id);
             epan_sys::dissector_add_uint(
-                "tcp.port\u{0}".as_ptr() as *const std::ffi::c_char,
-                7447u32 as std::ffi::c_uint,
+                nul_terminated_str("tcp.port").unwrap(),
+                7447 as _,
+                handle,
+            );
+            epan_sys::dissector_add_uint(
+                nul_terminated_str("udp.port").unwrap(),
+                7447 as _,
                 handle,
             );
         }
