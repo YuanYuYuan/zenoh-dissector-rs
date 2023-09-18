@@ -4,30 +4,43 @@
 
 ## Usage
 
+### Install dependencies
 
-Build the plugin
+- Linux (Ubuntu)
+```bash
+sudo apt-get install -y libglib2.0-dev libgcrypt-dev libc-ares-dev flex bison libspeexdsp-dev
+```
+
+- MacOS
+```bash
+brew install libgcrypt c-ares speexdsp
+```
+
+
+### Build the plugin
 
 ```bash
 cargo build --release
 ```
 
-Place the plugin properly
+### Place the plugin properly
 
-(Linux)
+- Linux (Ubuntu)
 ```bash
 mkdir -p ~/.local/lib/wireshark/plugins/4.0/epan
 cp ./target/release/libzenoh_dissector.so ~/.local/lib/wireshark/plugins/4.0/epan/libzenoh_dissector.so
 ```
 
-(MacOS)
+- MacOS
 Assuming users have Wireshark application installed under _/Applications/Wireshark.app_.
 
 ```bash
+brew install libgcrypt c-ares speexdsp
 cp ./target/release/libzenoh_dissector.dylib /Applications/Wireshark.app/Contents/PlugIns/wireshark/4-0/epan/libzenoh_dissector.so
 ```
 
 
-## Sample Data
+## Sample data
 
 Reading a get/queryable sample
 
