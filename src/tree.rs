@@ -39,7 +39,7 @@ impl TreeArgs<'_> {
                 self.length as _,
                 nul_terminated_str(name).unwrap(),
             );
-            
+
             epan_sys::proto_item_add_subtree(ti, ett)
         };
 
