@@ -28,7 +28,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        os:
+          # - ubuntu-latest
+          # - macOS-latest
+          - windows-latest
+
+    env:
+      PLATFORM: x64
+      WIRESHARK_BASE_DIR: C:\Development
 
     steps:
       - uses: actions/checkout@v2
@@ -53,6 +60,10 @@ jobs:
       - name: Install macOS dependencies
         if: startsWith(matrix.os, 'macOS')
         run: brew install libgcrypt c-ares speexdsp
+
+      - name: Install Windows dependencies
+        if: startsWith(matrix.os, 'windows')
+        run: choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
 
       - name: Clippy
         uses: actions-rs/cargo@v1
