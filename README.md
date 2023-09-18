@@ -35,7 +35,6 @@ cp ./target/release/libzenoh_dissector.so ~/.local/lib/wireshark/plugins/4.0/epa
 Assuming users have Wireshark application installed under _/Applications/Wireshark.app_.
 
 ```bash
-brew install libgcrypt c-ares speexdsp
 cp ./target/release/libzenoh_dissector.dylib /Applications/Wireshark.app/Contents/PlugIns/wireshark/4-0/epan/libzenoh_dissector.so
 ```
 
