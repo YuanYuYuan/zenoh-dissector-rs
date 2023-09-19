@@ -11,7 +11,7 @@
 # Contributors:
 #   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 #
-name: CI
+name: CI (macOS)
 
 on:
   push:
@@ -23,16 +23,10 @@ on:
 
 jobs:
   check:
-    name: Run checks on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Run checks on macOS-latest
+    runs-on: macOS-latest
     strategy:
       fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
-
     steps:
       - uses: actions/checkout@v2
 
@@ -49,20 +43,8 @@ jobs:
         env:
           CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
-      - name: Install Ubuntu dependencies
-        if: startsWith(matrix.os, 'ubuntu')
-        run: sudo apt-get -y install libglib2.0-dev libgcrypt-dev libc-ares-dev flex bison libspeexdsp-dev
-
-      - name: Install macOS dependencies
-        if: startsWith(matrix.os, 'macOS')
+      - name: Install dependencies
         run: brew install libgcrypt c-ares speexdsp
-
-      - name: Install Windows dependencies
-        if: startsWith(matrix.os, 'windows')
-        run: |
-          choco install -y --force --no-progress asciidoctorj xsltproc docbook-bundle nsis winflexbison3 cmake
-          echo "PLATFORM=x64" >> $GITHUB_ENV
-          echo "WIRESHARK_BASE_DIR=C:\Development" >> $GITHUB_ENV
 
       - name: Clippy
         uses: actions-rs/cargo@v1
